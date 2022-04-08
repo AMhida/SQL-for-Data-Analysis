@@ -1,0 +1,68 @@
+/*--- 1- Query1 Yearly sales amount & QTY ----------*/
+SELECT sum(il.Quantity) QTY,sum(il.UnitPrice*il.Quantity)  Total_Sales , 
+       strftime('%Y', inv.InvoiceDate) Invoice_Year
+FROM Invoice inv
+JOIN InvoiceLine il USING (InvoiceId)
+GROUP BY strftime('%Y', inv.InvoiceDate);
+
+/** 2- Top Ten Artist Sales QTY  ***/
+WITH top_ten_cntr AS
+  (SELECT sum(il.Quantity) Country_QTY,
+          inv.BillingCountry
+   FROM Invoice inv
+   JOIN InvoiceLine il USING (InvoiceId)
+   GROUP BY inv.BillingCountry
+   ORDER BY 1 DESC
+   LIMIT 10)
+SELECT inv.BillingCountry,
+       gr.Name genre_name ,
+       sum(il.Quantity) genre_QTY
+FROM Invoice inv
+JOIN InvoiceLine il USING (InvoiceId)
+JOIN Track tr USING (trackid)
+JOIN genre gr ON gr.GenreId =tr.GenreId
+JOIN top_ten_cntr ON top_ten_cntr.BillingCountry= inv.BillingCountry
+GROUP BY inv.BillingCountry,
+         gr.Name
+
+
+
+/*---3- Query3----------*/
+SELECT q2.purchased_orders ,
+       q2.BillingCountry country ,
+       q2.Name Name ,
+       q2.GenreId
+FROM
+  (SELECT q1.BillingCountry ,
+          q1.Name ,
+          q1.GenreId ,
+          q1.cus_spent purchased_orders ,
+          RANK () OVER (PARTITION BY q1.BillingCountry
+                        ORDER BY q1.cus_spent DESC) RNK
+   FROM
+     (SELECT inv.BillingCountry ,
+             g.Name ,
+             count(inv.invoiceid) cus_spent ,
+             g.GenreId
+      FROM Invoice inv
+      JOIN InvoiceLine invd USING (InvoiceId)
+      JOIN track tr USING (TrackId)
+      JOIN genre g USING (GenreId)
+      GROUP BY inv.BillingCountry ,
+               g.Name ,
+               g.GenreId) q1)q2
+WHERE q2.RNK = 1;
+
+/*** 4-Country Sales by Media Type **/ 
+SELECT inv.BillingCountry ,
+       sum(il.Quantity) QTY,
+       mt.Name Media_type
+FROM Invoice inv
+JOIN InvoiceLine il USING (InvoiceId)
+JOIN Track t USING (trackid)
+JOIN MediaType mt USING (MediaTypeid)
+GROUP BY mt.Name ,
+         inv.BillingCountry
+         
+
+
